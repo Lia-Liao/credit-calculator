@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>信用卡借款计算器</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>信用卡借款计算器</h1>
+        </header>
+        
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="cards">信用卡列表</button>
+            <button class="tab-btn" data-tab="calculate">计算最优</button>
+        </nav>
+        
+        <main class="main-content">
+            <div id="cards-tab" class="tab-content active">
+                <div class="refresh-btn-container">
+                    <button id="refresh-btn" class="btn btn-secondary">刷新数据</button>
+                </div>
+                
+                <div id="stats-container" class="stats-container">
+                    <div class="stat-item">
+                        <span class="stat-label">当前总负债</span>
+                        <span class="stat-value" id="total-debt">¥0.00</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-label">当前融资能力</span>
+                        <span class="stat-value" id="total-credit">¥0.00</span>
+                        <span class="info-icon">
+                            ⓘ
+                            <span class="tooltip">银行可能动态调整您的授信额度，实际额度以银行办理页为准</span>
+                        </span>
+                    </div>
+                </div>
+                
+                <div id="cards-container" class="cards-container">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+            
+            <div id="calculate-tab" class="tab-content">
+                <div class="calculate-form">
+                    <div class="form-group">
+                        <label for="amount-input">借款金额</label>
+                        <input type="number" id="amount-input" class="form-input" placeholder="请输入借款金额">
+                        <button id="fill-bill-btn" class="fill-hint-btn">一键填入当前总负债</button>
+                    </div>
+                    
+                    <div class="term-selector-group">
+                        <label>借款时长</label>
+                        <div class="term-selector">
+                            <select id="min-term-input" class="form-input">
+                                <option value="3">3期</option>
+                                <option value="6">6期</option>
+                                <option value="12" selected>12期</option>
+                                <option value="24">24期</option>
+                            </select>
+                            <span class="term-separator">—</span>
+                            <select id="max-term-input" class="form-input">
+                                <option value="3">3期</option>
+                                <option value="6">6期</option>
+                                <option value="12">12期</option>
+                                <option value="24" selected>24期</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button id="calculate-btn" class="btn btn-primary btn-large">计算最优方案</button>
+                </div>
+                
+                <div id="result-container" class="result-container"></div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

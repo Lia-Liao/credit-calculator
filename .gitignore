@@ -17,3 +17,8 @@ npm-debug.log*
 # 环境变量
 .env
 .env.local
+
+# Cloudflare
+.wrangler/
+.pages/
+wrangler.toml.local

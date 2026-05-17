@@ -1,0 +1,16 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "credit-calculator"
+compatibility_date = "2024-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+
+# Pages Functions 配置
+[functions]
+directory = "functions"
+
+# KV 命名空间绑定
+[[kv_namespaces]]
+binding = "DATA_KV"
+id = "" # 部署后从 Cloudflare 控制台获取

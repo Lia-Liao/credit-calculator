@@ -1,0 +1,13 @@
+{
+  "name": "credit-calculator",
+  "version": "1.0.0",
+  "description": "信用卡借款成本计算器",
+  "scripts": {
+    "dev": "cd backend && node server.js",
+    "pages:dev": "wrangler pages dev frontend --port 3000",
+    "pages:deploy": "wrangler pages deploy frontend"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

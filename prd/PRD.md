@@ -15,8 +15,8 @@
 ### 1.3 技术方案
 
 - **前端技术**: 纯HTML/CSS/JavaScript（无框架）
-- **后端技术**: 复用现有项目后端架构（Node.js）
-- **数据存储**: 数据库存储，后端提供API接口
+- **后端技术**: Node.js + Express（本地开发）+ Cloudflare Functions（生产部署）
+- **数据存储**: JSON文件（本地）/ Cloudflare KV（生产）
 - **数据管理**: 独立的后端管理界面
 - **前端-后端交互**: 前端通过API调用获取和提交数据
 - **适配**: 手机H5响应式设计
@@ -49,7 +49,7 @@
 - 输入：目标借款金额
   - 支持手动输入
   - 提供"一键填入当前总负债"按钮，自动计算并填入所有信用卡账单出账金额的总和
-- 输入：借款期数范围（最小期数 \~ 最大期数）
+- 输入：借款期数（单个选择）
 - 计算：
   1. 筛选符合期数条件的所有分期产品
   2. 按年化利率从低到高排序所有产品
@@ -58,7 +58,7 @@
 - 输出：最优融资方案组合
   - 列出所有使用的产品（按利率从低到高排序）
   - 每个产品的银行名称、产品类型、期数、年化利率、借款金额、利息
-  - 总计：总借款金额、综合年化利率、总利息
+  - 总计：总借款金额、综合年化利率、总利息、总月供
 
 ***
 
@@ -106,7 +106,7 @@
 
 **示例1：1家银行即可覆盖需求**
 
-场景：客户目标借款金额=5000元（所有账单金额总和），借钱期数在12期-12期之间
+场景：客户目标借款金额=5000元（所有账单金额总和），借钱期数12期
 
 条件：
 
@@ -119,7 +119,7 @@
 
 **示例2：需要多家银行才能覆盖客户借款需求**
 
-场景：客户目标借款金额=10万元，且本期没有账单
+场景：客户目标借款金额=10万元，且本期没有账单，期数12期
 
 条件：
 
@@ -138,7 +138,7 @@
 
 **示例3：现金分期和账单分期的互相偿还**
 
-场景：客户目标借款金额=7万元
+场景：客户目标借款金额=7万元，期数12期
 
 - A银行账单=1万元
 - B银行账单=2万元
@@ -175,8 +175,8 @@
   - 添加/编辑/删除分期产品信息
   - 设置期数选项
   - 设置对应期数的年化利率
-  - 设置最低/最高借款金额门槛
-- 数据持久化：所有数据存储在数据库中
+  - 设置最低/最高借款金额门槛（现金分期）
+- 数据持久化：所有数据存储在JSON文件或Cloudflare KV中
 
 #### 2.1.4 后端API接口
 
@@ -195,40 +195,7 @@
 
 ## 3. 数据结构设计
 
-### 3.1 数据库表设计
-
-#### 3.1.1 信用卡表 (credit\_cards)
-
-存储用户的信用卡基本信息
-
-| 字段名           | 类型            | 说明         | 示例       |
-| ------------- | ------------- | ---------- | -------- |
-| id            | INT           | 主键，自增      | 1        |
-| bank\_name    | VARCHAR(100)  | 银行名称       | 招商银行     |
-| bank\_logo    | VARCHAR(255)  | 银行logo URL | <br />   |
-| bill\_amount  | DECIMAL(10,2) | 账单出账金额     | 15000.00 |
-| credit\_limit | DECIMAL(10,2) | 现金授信额度     | 50000.00 |
-| created\_at   | DATETIME      | 创建时间       | <br />   |
-| updated\_at   | DATETIME      | 更新时间       | <br />   |
-
-#### 3.1.2 分期产品表 (installment\_products)
-
-存储各银行的分期产品配置
-
-| 字段名              | 类型            | 说明                         | 示例       |
-| ---------------- | ------------- | -------------------------- | -------- |
-| id               | INT           | 主键，自增                      | 1        |
-| credit\_card\_id | INT           | 关联的信用卡ID                   | 1        |
-| product\_type    | ENUM          | 产品类型：bill(账单分期)/cash(现金分期) | bill     |
-| enabled          | BOOLEAN       | 是否启用                       | true     |
-| term             | INT           | 期数（月）                      | 3        |
-| rate             | DECIMAL(5,4)  | 年化利率（小数形式）                 | 0.0450   |
-| min\_amount      | DECIMAL(10,2) | 最低借款金额                     | 1000.00  |
-| max\_amount      | DECIMAL(10,2) | 最高借款金额                     | 50000.00 |
-| created\_at      | DATETIME      | 创建时间                       | <br />   |
-| updated\_at      | DATETIME      | 更新时间                       | <br />   |
-
-### 3.2 JSON数据示例（供参考）
+### 3.1 JSON数据结构
 
 ```json
 {
@@ -239,24 +206,25 @@
       "bankLogo": "",
       "billAmount": 15000,
       "creditLimit": 50000,
-      "products": {
-        "billInstallment": {
+      "products": [
+        {
+          "id": "prod_001",
+          "productType": "bill",
           "enabled": true,
-          "terms": [
-            { "term": 3, "rate": 0.045, "minAmount": 1000, "maxAmount": 50000 },
-            { "term": 6, "rate": 0.042, "minAmount": 1000, "maxAmount": 50000 },
-            { "term": 12, "rate": 0.048, "minAmount": 1000, "maxAmount": 50000 }
-          ]
+          "term": 3,
+          "rate": 0.045,
+          "billAmount": 15000
         },
-        "cashInstallment": {
+        {
+          "id": "prod_002",
+          "productType": "cash",
           "enabled": true,
-          "terms": [
-            { "term": 3, "rate": 0.052, "minAmount": 1000, "maxAmount": 50000 },
-            { "term": 6, "rate": 0.049, "minAmount": 1000, "maxAmount": 50000 },
-            { "term": 12, "rate": 0.055, "minAmount": 1000, "maxAmount": 50000 }
-          ]
+          "term": 3,
+          "rate": 0.052,
+          "minAmount": 1000,
+          "maxAmount": 50000
         }
-      }
+      ]
     }
   ]
 }
@@ -264,19 +232,31 @@
 
 **字段说明**：
 
-- `id`: 唯一标识
+- `id`: 信用卡唯一标识
 - `bankName`: 银行名称
 - `bankLogo`: 银行logo（可选）
 - `billAmount`: 账单出账金额
 - `creditLimit`: 现金授信额度
-- `products`: 分期产品配置
-  - `billInstallment`: 账单分期
-  - `cashInstallment`: 现金分期
-  - `terms`: 期数配置数组
-    - `term`: 期数（月）
-    - `rate`: 年化利率（小数形式）
-    - `minAmount`: 最低借款金额
-    - `maxAmount`: 最高借款金额
+- `products`: 分期产品配置数组
+  - `id`: 产品唯一标识
+  - `productType`: 产品类型：bill(账单分期)/cash(现金分期)
+  - `enabled`: 是否启用
+  - `term`: 期数（月）
+  - `rate`: 年化利率（小数形式）
+  - `billAmount`: 账单分期金额（仅账单分期）
+  - `minAmount`: 最低借款金额（仅现金分期，默认1000）
+  - `maxAmount`: 最高借款金额（仅现金分期）
+
+### 3.2 分期产品字段对比
+
+| 字段 | 账单分期 | 现金分期 |
+|------|----------|----------|
+| productType | bill | cash |
+| term | 必填 | 必填 |
+| rate | 必填 | 必填 |
+| billAmount | 必填（出账金额） | 不适用 |
+| minAmount | 不适用 | 必填（默认1000） |
+| maxAmount | 不适用 | 必填 |
 
 ***
 
@@ -286,41 +266,37 @@
 
 ```mermaid
 flowchart TD
-    Start([开始]) --> Input[输入用户变量: <br/>1. 目标金额 Need<br/>2. 期限范围 T_min ~ T_max]
+    Start([开始]) --> Input[输入用户变量: <br/>1. 目标金额 Amount<br/>2. 期限 Term]
     
     Input --> LoopStart{遍历所有银行及<br/>分期产品 账单/现金}
     
-    LoopStart --> CheckLimit{检查硬性门槛}
-    
-    %% 门槛判断逻辑
-    CheckLimit -- 现金分期 --> CheckCredit{检查: 授信额度 >= Need ?}
-    CheckLimit -- 账单分期 --> CheckBill{检查: 出账金额 >= Need ?}
-    
-    CheckCredit -- 否 --> NextProduct[跳过该产品]
-    CheckBill -- 否 --> NextProduct
-    
-    CheckCredit -- 是 --> CheckTerm
-    CheckBill -- 是 --> CheckTerm
-    
-    %% 期限判断逻辑
-    CheckTerm{检查: 产品可选期数<br/>是否在 T_min ~ T_max 范围内?}
+    LoopStart --> CheckEnabled{产品是否启用?}
+    CheckEnabled -- 否 --> NextProduct[跳过该产品]
+    CheckEnabled -- 是 --> CheckTerm{期数是否匹配?}
     
     CheckTerm -- 否 --> NextProduct
-    CheckTerm -- 是 --> GetRate[获取该产品对应期数的<br/>近似年化利率 r]
+    CheckTerm -- 是 --> CheckAmount{检查金额条件}
     
-    %% 计算成本
-    GetRate --> CalcCost[计算总成本<br/>Cost = fNeed, r, Term]
+    CheckAmount -- 账单分期 --> CheckBill{账单金额 > 0?}
+    CheckAmount -- 现金分期 --> CheckCash{检查: minAmount <= Amount <= maxAmount?}
     
-    %% 存储结果
+    CheckBill -- 否 --> NextProduct
+    CheckCash -- 否 --> NextProduct
+    
+    CheckBill -- 是 --> GetRate[获取年化利率 r]
+    CheckCash -- 是 --> GetRate
+    
+    GetRate --> CalcCost[计算每期还款额和利息]
+    
     CalcCost --> SaveResult[保存为候选方案]
     
     NextProduct --> LoopEnd{是否还有<br/>未遍历的产品?}
     LoopEnd -- 是 --> LoopStart
-    LoopEnd -- 否 --> Compare[对比所有候选方案]
+    LoopEnd -- 否 --> Sort[按利率从低到高排序]
     
-    Compare --> FindMin{寻找最低利率 r_min}
+    Sort --> Match[依次匹配凑够目标金额]
     
-    FindMin --> Output([输出: 最优银行、产品类型、期数、利率])
+    Match --> Output([输出: 最优方案组合])
 ```
 
 ### 4.2 成本计算公式
@@ -331,6 +307,10 @@ flowchart TD
    - 月利率 = 年利率 / 12
 2. **总利息** = 每月还款额 × 期数 - 借款本金
 3. **总成本** = 总利息
+
+**0利率特殊处理**：
+- 每月还款额 = 借款本金 / 期数
+- 总利息 = 0
 
 ***
 
@@ -353,7 +333,7 @@ flowchart TD
 │   Tab 2: 计算最优方案      │
 │   - 输入借款金额            │
 │   - [一键填入]按钮          │
-│   - 选择期数范围            │
+│   - 选择借款期数            │
 │   - [计算]按钮              │
 │   - 结果展示区域            │
 │                             │
@@ -375,21 +355,20 @@ flowchart TD
 
 - 输入区域：简洁的表单设计
   - 借款金额输入框
-  - \[一键填入所有出账金额]按钮（位于输入框旁，点击后自动计算并填充所有信用卡账单出账金额的总和）
-  - 最小期数选择器
-  - 最大期数选择器
+  - [一键填入所有出账金额]按钮（位于输入框旁，点击后自动计算并填充所有信用卡账单出账金额的总和）
+  - 借款期数选择器（单个下拉选择）
 - 计算按钮：醒目突出
 - 结果展示：
-  - 最优方案卡片（高亮显示）
+  - 最优方案卡片列表（按利率排序）
   - 年化利率大字展示
-  - 详细还款计划
+  - 方案汇总信息
 
 ### 5.4 后端管理界面
 
 **设计要点**：
 
 - 独立的后台管理页面
-- 分两个标签页：信用卡管理、分期产品管理
+- 单页面设计，支持添加/编辑信用卡和分期产品
 - 表单形式编辑数据
 - 列表视图展示所有数据
 - 支持新增、编辑、删除操作
@@ -400,19 +379,39 @@ flowchart TD
 
 ```
 credit-calculator/
-├── PRD.md                         # 本文档
-├── frontend/                      # 前端H5页面
-│   ├── index.html                # 主页面
-│   ├── css/
-│   │   └── style.css             # 样式文件
-│   └── js/
-│       ├── app.js                # 主应用逻辑
-│       ├── calculator.js         # 计算引擎
-│       ├── api.js                # API接口调用
-│       └── ui.js                 # UI交互
-└── backend/                       # 后端管理（复用现有架构）
-    ├── admin.html                # 后端管理页面
-    └── (集成到现有后端服务)
+├── src/                      # 共享源代码
+│   ├── frontend/             # 前端H5页面
+│   │   ├── index.html        # 主页面
+│   │   ├── css/
+│   │   │   └── style.css     # 样式文件
+│   │   └── js/
+│   │       ├── app.js        # 主应用逻辑
+│   │       └── api.js        # API接口调用
+│   ├── admin/                # 管理后台
+│   │   └── index.html        # 管理页面
+│   └── shared/               # 共享业务逻辑
+│       └── calculator.js     # 计算引擎
+├── cloudflare/               # Cloudflare Pages 专用
+│   └── functions/            # Pages Functions API
+│       ├── _middleware.js
+│       └── api/
+│           ├── calculate.js
+│           └── credit-cards/
+│               ├── index.js
+│               └── [id].js
+├── local/                    # 本地开发专用
+│   ├── server.js             # Express 服务器
+│   └── data/                 # 本地数据文件
+│       ├── data.json
+│       └── sample-data.json
+├── prd/                      # 文档
+│   ├── PRD.md
+│   ├── 技术文档.md
+│   ├── 启动指南.md
+│   └── 数据修改指南.md
+├── DEPLOYMENT.md             # 部署指南
+├── wrangler.toml             # Cloudflare 配置
+└── package.json              # 依赖配置
 ```
 
 ***
@@ -421,17 +420,16 @@ credit-calculator/
 
 ### 7.1 第一阶段（MVP）
 
-- [ ] 后端数据库表设计和API接口开发
-- [ ] 项目基础结构搭建
-- [ ] 前端Tab 1 - 信用卡列表展示（通过API获取数据）
-- [ ] 前端Tab 2 - 计算功能实现（核心算法 + 一键填入按钮）
-- [ ] 基础UI样式（手机H5适配）
+- [x] 项目基础结构搭建
+- [x] 前端Tab 1 - 信用卡列表展示（通过API获取数据）
+- [x] 前端Tab 2 - 计算功能实现（核心算法 + 一键填入按钮）
+- [x] 基础UI样式（手机H5适配）
 
 ### 7.2 第二阶段
 
-- [ ] 后端管理界面开发
-- [ ] 结果详情展示（每月还款计划）
-- [ ] 优化用户体验和动画效果
+- [x] 后端管理界面开发
+- [x] 结果详情展示（方案组合列表）
+- [x] 优化用户体验
 
 ### 7.3 第三阶段（可选）
 
@@ -453,7 +451,6 @@ credit-calculator/
 ### 8.2 约束
 
 - 前端通过API调用后端获取数据
-- 数据持久化存储在数据库中
+- 数据持久化存储在JSON文件或Cloudflare KV中
 - 不涉及真实的金融交易，仅作计算参考
 - 计算结果仅供参考，实际以银行为准
-

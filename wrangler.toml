@@ -8,7 +8,7 @@ ENVIRONMENT = "production"
 
 # Pages Functions 配置
 [functions]
-directory = "functions"
+directory = "cloudflare/functions"
 
 # KV 命名空间绑定
 [[kv_namespaces]]

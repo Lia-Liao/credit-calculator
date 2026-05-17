@@ -1,123 +1,166 @@
-# Cloudflare Pages 部署指南
+# 信用卡借款计算器 - 部署指南
 
-## 前置准备
+## 项目结构
 
-1. 注册 Cloudflare 账号：https://dash.cloudflare.com/sign-up
-2. 安装 Wrangler CLI（如果想本地测试）：
-   ```bash
-   npm install -g wrangler
-   ```
-
-## 部署步骤
-
-### 第一步：创建 Cloudflare Pages 项目
-
-1. 访问 https://dash.cloudflare.com/
-2. 点击 **Workers & Pages** → **Create application** → **Pages**
-3. 选择 **Connect to Git**
-4. 选择你的 GitHub 仓库 `Lia-Liao/credit-calculator`
-
-### 第二步：配置构建设置
-
-在 **Build settings** 中配置：
-
-| 配置项 | 填写内容 |
-|--------|----------|
-| **Project name** | `credit-calculator`（随便起） |
-| **Production branch** | `main` |
-| **Framework preset** | `None` |
-| **Build command** | 留空 |
-| **Build output directory** | `frontend` |
-
-### 第三步：创建 KV 命名空间
-
-1. 在 Cloudflare Dashboard，点击 **Workers & Pages** → **KV**
-2. 点击 **Create namespace**
-3. 名称填写：`credit-calculator-data`
-4. 点击 **Add**
-
-### 第四步：绑定 KV 到 Pages 项目
-
-1. 回到你的 Pages 项目
-2. 点击 **Settings** → **Functions**
-3. 找到 **KV namespace bindings**
-4. 点击 **Add binding**
-   - **Variable name**: `DATA_KV`
-   - **KV namespace**: 选择刚才创建的 `credit-calculator-data`
-
-### 第五步：初始化数据（可选）
-
-1. 在 KV 命名空间页面，点击 **Add key-value pair**
-2. **Key**: `data`
-3. **Value**: 把 `backend/data/sample-data.json` 的内容复制进去
-4. 点击 **Add entry**
-
-（其实代码里已经写了自动初始化，如果没有数据会自动用 sample-data.json）
-
-### 第六步：部署！
-
-1. 回到 Pages 项目的 **Deployments** 页面
-2. 点击 **Save and Deploy**
-3. 等待部署完成（约 1-2 分钟）
-
-## 访问你的应用
-
-部署完成后，Cloudflare 会给你一个 URL，类似：
-`https://credit-calculator.pages.dev`
-
----
-
-## Git 版本管理使用
-
-### 查看历史版本
-```bash
-git log --oneline
+```
+credit-calculator/
+├── src/                      # 源代码（共享）
+│   ├── frontend/             # 前端页面
+│   ├── admin/                # 管理后台
+│   └── shared/               # 共享业务逻辑
+├── cloudflare/               # Cloudflare Pages 专用
+│   └── functions/            # Pages Functions API
+├── local/                    # 本地开发专用
+│   ├── server.js             # Express 服务器
+│   └── data/                 # 本地数据文件
+└── docs/                     # 文档
 ```
 
-### 回退到上个版本
+## 本地开发
+
+### 安装依赖
+
 ```bash
-git reset --hard HEAD~1
-git push -f origin main
+pnpm install
 ```
 
-### 查看修改内容
+### 启动本地服务器
+
 ```bash
-git diff
+pnpm dev
 ```
 
-### 提交新修改
+服务启动后访问：
+- 前端页面: http://localhost:3000
+- 管理后台: http://localhost:3000/admin
+
+### Cloudflare Pages 本地预览
+
 ```bash
-git add .
-git commit -m "描述你的修改"
-git push origin main
+pnpm pages:dev
 ```
 
----
+## Cloudflare Pages 部署
 
-## 本地开发测试（可选）
+### 前置条件
 
-如果你想在本地测试 Cloudflare Pages Functions：
+1. 拥有 Cloudflare 账号
+2. 在 GitHub 创建独立仓库 `credit-calculator`
+3. 创建 KV 命名空间
 
-1. 安装依赖：
-   ```bash
-   npm install
-   ```
+### 部署步骤
 
-2. 登录 Wrangler：
-   ```bash
-   wrangler login
-   ```
+#### 1. 创建 KV 命名空间
 
-3. 创建本地 KV 命名空间（或绑定远程的）：
-   ```bash
-   wrangler kv:namespace create "credit-calculator-data" --preview
-   ```
+在 Cloudflare Dashboard 中：
+- 进入 **Workers & Pages** → **KV**
+- 点击 **Create namespace**
+- 名称：`credit-calculator-data`（或任意名称）
 
-4. 更新 `wrangler.toml` 中的 `id`
+#### 2. 配置 Pages 项目
 
-5. 启动本地开发服务器：
-   ```bash
-   npm run pages:dev
-   ```
+在 Cloudflare Dashboard 中：
+- 进入 **Workers & Pages** → **Pages**
+- 点击 **Create a project** → **Connect to Git**
+- 选择你的 GitHub 仓库 `credit-calculator`
 
-6. 访问 http://localhost:3000
+#### 3. 构建配置
+
+| 配置项 | 值 |
+|--------|-----|
+| Framework preset | `None` |
+| Build command | 留空 |
+| Build output directory | `src/frontend` |
+
+#### 4. 环境变量和绑定
+
+进入项目的 **Settings** → **Environment variables**：
+
+**添加 KV 绑定：**
+- Variable name: `DATA_KV`
+- KV namespace: 选择你创建的命名空间
+
+#### 5. 部署
+
+点击 **Save and Deploy**
+
+### wrangler.toml 配置说明
+
+```toml
+name = "credit-calculator"
+compatibility_date = "2024-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+
+[functions]
+directory = "cloudflare/functions"
+
+[[kv_namespaces]]
+binding = "DATA_KV"
+id = "你的 KV 命名空间 ID"
+```
+
+> **注意**：`id` 字段需要在 Cloudflare 控制台获取并填写
+
+### 使用 wrangler CLI 部署
+
+```bash
+# 登录 Cloudflare
+wrangler login
+
+# 部署
+pnpm pages:deploy
+```
+
+## API 接口
+
+### 基础路径
+
+```
+https://<your-pages-domain>.pages.dev/api
+```
+
+### 接口列表
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/api/credit-cards` | 获取所有信用卡数据 |
+| GET | `/api/credit-cards/:id` | 获取单个信用卡 |
+| POST | `/api/credit-cards` | 创建信用卡 |
+| PUT | `/api/credit-cards/:id` | 更新信用卡 |
+| DELETE | `/api/credit-cards/:id` | 删除信用卡 |
+| POST | `/api/calculate` | 计算最优融资方案 |
+
+### 计算接口示例
+
+```bash
+curl -X POST https://<domain>.pages.dev/api/calculate \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 100000, "minTerm": 3, "maxTerm": 12}'
+```
+
+## 数据存储
+
+### 本地开发
+
+数据存储在 `local/data/data.json`，首次启动时会从 `sample-data.json` 初始化。
+
+### Cloudflare 生产环境
+
+数据存储在 KV 命名空间中，键为 `data`。首次访问时会自动初始化示例数据。
+
+## Git 工作流
+
+1. 在本地开发修改代码
+2. 提交到 GitHub `main` 分支
+3. Cloudflare 自动触发部署
+4. 部署完成后可在 Pages 控制台查看日志
+
+## 注意事项
+
+1. **数据持久化**：KV 存储可能有秒级延迟，数据更新后可能不会立即生效
+2. **环境变量**：确保 `DATA_KV` 绑定正确配置
+3. **CORS**：已在 middleware 中配置，支持跨域访问
+4. **Node.js 兼容性**：使用 `nodejs_compat` flag 确保兼容性

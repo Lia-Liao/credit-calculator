@@ -58,10 +58,10 @@ class ApiClient {
     });
   }
   
-  async calculate(amount, minTerm, maxTerm) {
+  async calculate(amount, term) {
     return this.request('/calculate', {
       method: 'POST',
-      body: JSON.stringify({ amount, minTerm, maxTerm })
+      body: JSON.stringify({ amount, term })
     });
   }
 }

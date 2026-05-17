@@ -38,16 +38,15 @@ class App {
   
   async handleCalculate() {
     const amount = parseFloat(document.getElementById('amount-input').value);
-    const minTerm = parseInt(document.getElementById('min-term-input').value);
-    const maxTerm = parseInt(document.getElementById('max-term-input').value);
+    const term = parseInt(document.getElementById('term-input').value);
     
     if (!amount || amount <= 0) {
       alert('请输入有效的借款金额');
       return;
     }
     
-    if (minTerm > maxTerm) {
-      alert('最小期数不能大于最大期数');
+    if (!term || term <= 0) {
+      alert('请选择借款时长');
       return;
     }
     
@@ -56,7 +55,7 @@ class App {
       const resultContainer = document.getElementById('result-container');
       resultContainer.innerHTML = '<div class="loading">计算中...</div>';
       
-      this.state.calculateResult = await api.calculate(amount, minTerm, maxTerm);
+      this.state.calculateResult = await api.calculate(amount, term);
       this.renderCalculateResult();
     } catch (error) {
       console.error('计算失败:', error);

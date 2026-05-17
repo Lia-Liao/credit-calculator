@@ -3,11 +3,16 @@
   "version": "1.0.0",
   "description": "信用卡借款成本计算器",
   "scripts": {
-    "dev": "cd backend && node server.js",
-    "pages:dev": "wrangler pages dev frontend --port 3000",
-    "pages:deploy": "wrangler pages deploy frontend"
+    "dev": "node local/server.js",
+    "pages:dev": "wrangler pages dev src/frontend --port 3000",
+    "pages:deploy": "wrangler pages deploy src/frontend"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   },
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "wrangler": "^3.0.0",
+    "nodemon": "^3.0.2"
   }
 }

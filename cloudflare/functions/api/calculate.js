@@ -9,17 +9,25 @@ async function getData(env) {
 }
 
 function calculateEqualPayment(principal, annualRate, term) {
-  const monthlyRate = annualRate / 12;
-  const monthlyPayment = principal * monthlyRate * Math.pow(1 + monthlyRate, term) / 
-                         (Math.pow(1 + monthlyRate, term) - 1);
-  const totalPayment = monthlyPayment * term;
-  const totalInterest = totalPayment - principal;
+  let monthlyPayment, totalPayment, totalInterest;
+  
+  if (annualRate === 0) {
+    monthlyPayment = principal / term;
+    totalPayment = principal;
+    totalInterest = 0;
+  } else {
+    const monthlyRate = annualRate / 12;
+    monthlyPayment = principal * monthlyRate * Math.pow(1 + monthlyRate, term) / 
+                   (Math.pow(1 + monthlyRate, term) - 1);
+    totalPayment = monthlyPayment * term;
+    totalInterest = totalPayment - principal;
+  }
   
   return {
     principal,
     annualRate,
     term,
-    monthlyRate,
+    monthlyRate: annualRate / 12,
     monthlyPayment: Math.round(monthlyPayment * 100) / 100,
     totalPayment: Math.round(totalPayment * 100) / 100,
     totalInterest: Math.round(totalInterest * 100) / 100,
@@ -28,9 +36,9 @@ function calculateEqualPayment(principal, annualRate, term) {
 }
 
 export async function onRequestPost(context) {
-  const { amount, minTerm, maxTerm } = await context.request.json();
+  const { amount, term } = await context.request.json();
   
-  if (!amount || !minTerm || !maxTerm) {
+  if (!amount || !term) {
     return new Response(JSON.stringify({ code: 1, message: '请填写完整的计算参数', data: null }), {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -43,7 +51,7 @@ export async function onRequestPost(context) {
   for (const card of data.creditCards) {
     for (const product of card.products) {
       if (!product.enabled) continue;
-      if (product.term < minTerm || product.term > maxTerm) continue;
+      if (product.term !== term) continue;
       
       validProducts.push({
         ...product,

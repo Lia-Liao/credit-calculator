@@ -52,23 +52,14 @@
                         <button id="fill-bill-btn" class="fill-hint-btn">一键填入当前总负债</button>
                     </div>
                     
-                    <div class="term-selector-group">
-                        <label>借款时长</label>
-                        <div class="term-selector">
-                            <select id="min-term-input" class="form-input">
-                                <option value="3">3期</option>
-                                <option value="6">6期</option>
-                                <option value="12" selected>12期</option>
-                                <option value="24">24期</option>
-                            </select>
-                            <span class="term-separator">—</span>
-                            <select id="max-term-input" class="form-input">
-                                <option value="3">3期</option>
-                                <option value="6">6期</option>
-                                <option value="12">12期</option>
-                                <option value="24" selected>24期</option>
-                            </select>
-                        </div>
+                    <div class="form-group">
+                        <label for="term-input">借款时长</label>
+                        <select id="term-input" class="form-input">
+                            <option value="3">3期</option>
+                            <option value="6">6期</option>
+                            <option value="12" selected>12期</option>
+                            <option value="24">24期</option>
+                        </select>
                     </div>
                     
                     <button id="calculate-btn" class="btn btn-primary btn-large">计算最优方案</button>

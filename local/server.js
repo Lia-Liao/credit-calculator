@@ -8,8 +8,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend')));
-app.use('/admin', express.static(path.join(__dirname, '../admin')));
+app.use(express.static(path.join(__dirname, '../src/frontend')));
+app.use('/admin', express.static(path.join(__dirname, '../src/admin')));
 
 const DATA_FILE = path.join(__dirname, './data/data.json');
 const SAMPLE_DATA_FILE = path.join(__dirname, './data/sample-data.json');
@@ -32,17 +32,26 @@ function saveData() {
 }
 
 function calculateEqualPayment(principal, annualRate, term) {
-  const monthlyRate = annualRate / 12;
-  const monthlyPayment = principal * monthlyRate * Math.pow(1 + monthlyRate, term) / 
-                         (Math.pow(1 + monthlyRate, term) - 1);
-  const totalPayment = monthlyPayment * term;
-  const totalInterest = totalPayment - principal;
+  let monthlyPayment, totalPayment, totalInterest;
+  
+  if (annualRate === 0) {
+    // 利率为 0 时，直接分摊本金
+    monthlyPayment = principal / term;
+    totalPayment = principal;
+    totalInterest = 0;
+  } else {
+    const monthlyRate = annualRate / 12;
+    monthlyPayment = principal * monthlyRate * Math.pow(1 + monthlyRate, term) / 
+                   (Math.pow(1 + monthlyRate, term) - 1);
+    totalPayment = monthlyPayment * term;
+    totalInterest = totalPayment - principal;
+  }
   
   return {
     principal,
     annualRate,
     term,
-    monthlyRate,
+    monthlyRate: annualRate / 12,
     monthlyPayment: Math.round(monthlyPayment * 100) / 100,
     totalPayment: Math.round(totalPayment * 100) / 100,
     totalInterest: Math.round(totalInterest * 100) / 100,
@@ -98,9 +107,9 @@ app.delete('/api/credit-cards/:id', (req, res) => {
 });
 
 app.post('/api/calculate', (req, res) => {
-  const { amount, minTerm, maxTerm } = req.body;
+  const { amount, term } = req.body;
   
-  if (!amount || !minTerm || !maxTerm) {
+  if (!amount || !term) {
     return res.json({ code: 1, message: '请填写完整的计算参数', data: null });
   }
   
@@ -110,8 +119,8 @@ app.post('/api/calculate', (req, res) => {
     for (const product of card.products) {
       if (!product.enabled) continue;
       
-      // 检查期数范围
-      if (product.term < minTerm || product.term > maxTerm) continue;
+      // 检查期数是否匹配
+      if (product.term !== term) continue;
       
       validProducts.push({
         ...product,

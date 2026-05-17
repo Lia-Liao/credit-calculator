@@ -1,3 +1,13 @@
+import { sampleData, inMemoryData } from '../_middleware.js';
+
+async function getData(env) {
+  if (env.DATA_KV) {
+    return await env.DATA_KV.get('data', { type: 'json' }) || sampleData;
+  } else {
+    return inMemoryData || sampleData;
+  }
+}
+
 function calculateEqualPayment(principal, annualRate, term) {
   const monthlyRate = annualRate / 12;
   const monthlyPayment = principal * monthlyRate * Math.pow(1 + monthlyRate, term) / 
@@ -26,7 +36,7 @@ export async function onRequestPost(context) {
     });
   }
   
-  const data = await context.env.DATA_KV.get('data', { type: 'json' }) || { creditCards: [] };
+  const data = await getData(context.env);
   
   // 筛选符合条件的产品
   const validProducts = [];
